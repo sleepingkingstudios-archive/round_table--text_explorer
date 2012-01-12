@@ -67,5 +67,6 @@ end # module RSpec
 require 'text_explorer'
 
 module TextExplorer
-  module Mock; end
+  module Mock # :nodoc:
+  end # module Mock
 end # module TextExplorer
