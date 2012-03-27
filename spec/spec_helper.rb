@@ -64,9 +64,9 @@ end # module RSpec
 # SET UP SPECS
 ###############################################################################
 
-require 'text_explorer'
+require 'explore'
 
-module TextExplorer
+module Explore
   module Mock # :nodoc:
   end # module Mock
-end # module TextExplorer
+end # module Explore

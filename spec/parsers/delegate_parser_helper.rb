@@ -2,10 +2,10 @@
 
 require 'spec_helper'
 require 'controllers/action_delegate'
-require 'text_explorer/parsers/delegate_parser'
+require 'explore/parsers/delegate_parser'
 
 shared_examples "a DelegateParser" do
-  it { subject.should be_a TextExplorer::Parsers::DelegateParser }
+  it { subject.should be_a Explore::Parsers::DelegateParser }
   
   describe "action" do
     before :each do

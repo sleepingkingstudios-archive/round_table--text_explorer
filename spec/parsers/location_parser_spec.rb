@@ -2,13 +2,13 @@
 
 require 'spec_helper'
 require 'parsers/delegate_parser_helper'
-require 'text_explorer/explore/location'
-require 'text_explorer/parsers/location_parser'
+require 'explore/models/location'
+require 'explore/parsers/location_parser'
 
-describe TextExplorer::Parsers::LocationParser do
+describe Explore::Parsers::LocationParser do
   before :each do
     @location = mock('location')
-    @location.stub :is_a? do |type| type == TextExplorer::Explore::Location end
+    @location.stub :is_a? do |type| type == Explore::Models::Location end
   end # before :each
   
   describe "initialization" do
@@ -109,65 +109,29 @@ describe TextExplorer::Parsers::LocationParser do
     end # describe "name"
     
     describe "go" do
-      before :each do
-        @edge_name = "Mysterious Cavern"
-        @edge_params = {
-          :continent => :the_ground,
-          :if => nil,
-          :location => :mysterious_cavern,
-          :particle => false,
-          :region => :the_caverns,
-          :unless => nil
-        } # end edge_params
-      end # before :each
+      let(:edge_location) { :mysterious_cavern }
+      let(:edge_params) {
+        { :region => :the_caverns,
+          :name => "Caverns of Mystery"
+        } # end anonymous Hash
+      } # end let :edge_params
       
-      it "name must be a String" do
+      it "name must be a String or Symbol" do
         expect {
           subject.instance_eval do
             go nil
           end # instance_eval
-        }.to raise_error ArgumentError
+        }.to raise_error ArgumentError, /location not to be nil/i
       end # it name must be a String
       
       it "takes a name and optional params" do
-        @location.should_receive(:add_edge).with(@edge_name, @edge_params)
+        @location.should_receive(:add_edge).with(edge_location, edge_params)
         subject.instance_eval do
-          go "Mysterious Cavern",
-            :continent => :the_ground,
-            :if => nil,
-            :location => :mysterious_cavern,
-            :particle => false,
+          go :mysterious_cavern,
             :region => :the_caverns,
-            :unless => nil
+            :name => "Caverns of Mystery"
         end # instance_eval
       end # it takes a name and ...
     end # describe go
-    
-    describe "go_to" do
-      before :each do
-        @edge_name = "Mysterious Cavern"
-        @edge_params = {
-          :continent => :the_ground,
-          :if => nil,
-          :location => :mysterious_cavern,
-          :particle => false,
-          :region => :the_caverns,
-          :unless => nil
-        } # end edge_params
-      end # before :each
-      
-      it "aliases go, with :particle => true" do
-        @parser.should_receive(:go).with(@edge_name, @edge_params.clone.update(:particle => true))
-        subject.instance_eval do
-          go_to "Mysterious Cavern",
-            :continent => :the_ground,
-            :if => nil,
-            :location => :mysterious_cavern,
-            :particle => false,
-            :region => :the_caverns,
-            :unless => nil
-        end # subject.instance_eval
-      end # it aliases go ...
-    end # describe go_to
   end # context (initialized)
 end # describe LocationParser

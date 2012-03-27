@@ -2,12 +2,12 @@
 
 require 'spec_helper'
 require 'parsers/delegate_parser_helper'
-require 'text_explorer/parsers/delegate_parser'
+require 'explore/parsers/delegate_parser'
 
-module TextExplorer::Mock # :nodoc: all
+module Explore::Mock # :nodoc: all
   module Parsers
     class MockDelegateParser
-      include TextExplorer::Parsers::DelegateParser
+      include Explore::Parsers::DelegateParser
       
       def initialize(delegate)
         @delegate = delegate
@@ -16,12 +16,12 @@ module TextExplorer::Mock # :nodoc: all
   end # module Parsers
 end # module TextExplorer::Mock
 
-describe TextExplorer::Parsers::DelegateParser do
+describe Explore::Parsers::DelegateParser do
   let(:delegate) {
     delegate = mock('delegate')
   } # end let :delegate
   
-  let(:described_class) { TextExplorer::Mock::Parsers::MockDelegateParser }
+  let(:described_class) { Explore::Mock::Parsers::MockDelegateParser }
   
   context "(initialized)" do
     before :each do
@@ -31,4 +31,4 @@ describe TextExplorer::Parsers::DelegateParser do
     
     it_behaves_like "a DelegateParser"
   end # context (initialized)
-end # describe TextExplorer::Parsers::DelegateParser
+end # describe Explore::Parsers::DelegateParser
