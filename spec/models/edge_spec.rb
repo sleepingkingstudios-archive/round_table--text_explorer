@@ -1,6 +1,8 @@
 # spec/explore/edge_spec.rb
 
 require 'spec_helper'
+require 'fixtures/models/edges'
+
 require 'explore/models/edge'
 require 'explore/models/location'
 

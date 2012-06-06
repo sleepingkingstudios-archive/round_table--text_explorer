@@ -1,11 +1,13 @@
-# lib/text_explorer/explore/location.rb
+# lib/explore/models/location.rb
 
 require 'controllers/action_delegate'
 require 'util/argument_validator'
 require 'util/text_processor'
-require 'text_explorer/parsers/location_parser'
 
-module TextExplorer::Explore
+require 'explore/models/edge'
+require 'explore/parsers/location_parser'
+
+module Explore::Models
   # A Location is a node in the graph of explorable spaces. Each location has
   # zero or more actions that can be performed on it directly, zero or more
   # delegates that also respond to actions, and zero or more edges that connect
@@ -13,11 +15,11 @@ module TextExplorer::Explore
   class Location < RoundTable::Controllers::ActionDelegate
     include RoundTable::Util::ArgumentValidator
     
-    def initialize(slug, params, &block)
+    def initialize(slug, params = nil, &block)
       # @param slug : the name of the location. Must be a string or a symbol.
       # @param params : additional initialization information. Must be a hash.
-      #   @key :region : the region containing this location. Must be a
-      #     TextExplorer::Explore::Region
+      #   @key :region (optional) : the region containing this location. Must
+      #     be a Explore::Models::Region
       #   @key :name (optional) : the human-readable name of the location. If
       #     omitted, the name is automatically generated from the slug.
       #   @key :description (optional) : a short string displayed to the player
@@ -29,11 +31,10 @@ module TextExplorer::Explore
       #   populated manually.
       
       validate_argument slug, :as => "slug", :type => [String, Symbol]
-      validate_argument params, :as => "params", :type => Hash
-      validate_argument params[:region], :as => "params[:region]", :type => Region
+      validate_argument params, :as => "params", :type => Hash, :allow_nil? => true
       
       config = { :name => nil }
-      config.update(params)
+      config.update(params) if params.is_a? Hash
       
       @slug = RoundTable::Util::TextProcessor.to_snake_case(slug.to_s).intern
       @name = config[:name] || @slug.to_s.split("_").map { |str| str.capitalize }.join(" ")
@@ -44,7 +45,7 @@ module TextExplorer::Explore
       self.description = config[:description] || "A rather generic-looking location. Nothing to see here."
       
       if block_given?
-        parser = TextExplorer::Parsers::LocationParser.new(self)
+        parser = Explore::Parsers::LocationParser.new(self)
         parser.instance_eval &block
       end # if
     end # constructor
@@ -54,52 +55,46 @@ module TextExplorer::Explore
     
     attr_reader :edges
     
-    def add_edge(name, params = {})
-      # @param name : the name of the other location. Must be unique.
-      # @param params (optional) : additional parameters
-      #   @key :if (optional) : if this parameter evaluates to false, the
-      #     player cannot go to the destination and the edge does not appear in
-      #     a list of valid locations.
-      #   @key :location (optional) : the slug of the destination location. If
-      #     omitted, the location is automatically generated from the name.
-      #   @key :particle (optional) : specifies whether the particle "to"
-      #     is required, e.g. "go north" vs. "go to Village"
-      #   @key :region (optional) : the slug of the destination region. If
-      #     omitted, uses the current region.
-      #   @key :unless (optional) : if this parameter evaluates to true, the
-      #     player cannot go to the destination and the edge does not appear in
-      #     a list of valid locations.
-      
-      validate_argument name, :as => "name", :type => [String, Symbol]
-      name = name.to_s.split("_").map { |str| str.capitalize }.join(" ") if name.is_a? Symbol
-      
-      raise ArgumentError.new "location #{name} is already defined" if @edges.has_key? name
-      
-      params[:location] ||= RoundTable::Util::TextProcessor.to_snake_case(name).intern
-      params[:region] ||= self.region.slug
-      
-      validate_argument params[:if], :as => "params[:if]", :allow_nil? => true, :type => Proc
-      validate_argument params[:unless], :as => "params[:unless]", :allow_nil? => true, :type => Proc
-      
-      @edges[name] = params
+    # Adds a directed (outgoing) connection to another location that the player
+    # can navigate, e.g. through the "go" action.
+    # 
+    # @param location: the name of the other location.
+    # @param params: additional parameters; see Edge.new for full details.
+    def add_edge(location, params = {})
+      if self.has_edge? location
+        self.edges[location].update(params)
+      else
+        edge = Explore::Models::Edge.new location, params
+        @edges[edge.location] = edge
+      end # if-else
     end # method add_edge
     
     def has_edge?(name)
       @edges.has_key? name
     end # method has_edge?
-
+    
+    def has_direction?(name)
+      self.directions.include? name
+    end # method has_direction?
+    
     def has_location?(name)
-      return false unless self.has_edge? name
-      edge_data = @edges[name]
-      
-      return false unless edge_data[:if].nil? or self.instance_eval(&edge_data[:if])
-      return false unless edge_data[:unless].nil? or !self.instance_eval(&edge_data[:unless])
-
-      return true
+      self.locations.include? name
     end # method has_location?
     
+    def directions
+      directions = Hash.new
+      self.edges.each do |key, loc|
+        directions.update({ loc.direction => key }) unless loc.direction.nil?
+      end # each
+      return directions
+    end # method directions
+    
     def locations
-      edges.keys.keep_if { |key| self.has_location? key }
+      locations = Hash.new
+      self.edges.each do |key, loc|
+        locations.update({ loc.name => key }) unless loc.name.nil?
+      end # each
+      return locations
     end # method locations
     
     ########################
@@ -126,8 +121,8 @@ module TextExplorer::Explore
     end # mutator name=
     
     def region=(value)
-      raise ArgumentError.new "expected TextExplorer::Explore::Region, received #{value.class}" unless value.is_a? TextExplorer::Explore::Region
+      raise ArgumentError.new "expected Explore::Models::Region, received #{value.class}" unless value.is_a? Explore::Models::Region
       @region = value
     end # mutator region=
   end # class Location
-end # module TextExplorer::Explore
+end # module Explore::Models

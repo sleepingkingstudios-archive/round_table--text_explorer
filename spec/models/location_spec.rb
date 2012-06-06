@@ -1,250 +1,200 @@
 # spec/explore/location_spec.rb
 
 require 'spec_helper'
-require 'events/event_dispatcher'
-require 'text_explorer/explore/location'
-require 'text_explorer/explore/region'
+require 'fixtures/models/edges'
+require 'fixtures/models/locations'
 
-describe TextExplorer::Explore::Location do
+require 'events/event_dispatcher'
+require 'explore/models/location'
+require 'explore/models/region'
+
+describe Explore::Models::Location do
   include RoundTable::Events::EventDispatcher
   
-  before :each do
-    @region = mock('region')
-    @region.stub(:is_a?) { |type| type == TextExplorer::Explore::Region }
-    @region.stub(:slug) { :the_clouds }
-    
-    @slug = :cloud_nine
-    @params = { :region => @region }
-    @block = Proc.new do; end
-    
-    @name = "Cloud Nine"
-    @description_as_string = "Cloud Nine is a magic city in the clouds."
-    @description_as_block = Proc.new do "#{self.name} is a magic city in the clouds." end
-  end # before :each
+  let :fixtures do Explore::Fixtures[:locations] end
   
   describe "initialization" do
+    let :fixture do fixtures[:mushroom_kingdom] end
+    
     describe "slug must be a string or symbol" do
-      it { expect { described_class.new nil, @params }.to raise_error ArgumentError }
-      it { expect { described_class.new @slug, @params }.not_to raise_error }
-      it { expect { described_class.new @slug.to_s, @params }.not_to raise_error }
+      it { expect { described_class.new nil, fixture.params }.to raise_error ArgumentError }
+      it { expect { described_class.new fixture.slug, fixture.params }.not_to raise_error }
+      it { expect { described_class.new fixture.slug.to_s, fixture.params }.not_to raise_error }
     end # describe slug ...
     
-    describe "params must be a hash" do
-      it { expect { described_class.new @slug, nil}.to raise_error ArgumentError }
-      it { expect { described_class.new @slug, @params}.not_to raise_error }
-      
-      describe ":region must be a TextExplorer::Explore::Region" do
-        it { expect { described_class.new @slug, @params.clone.update(:region => nil)}.to raise_error ArgumentError }
-      end # describe :region ...
+    describe "params must be a hash or nil" do
+      it { expect { described_class.new fixture.slug, :symbol}.to raise_error ArgumentError }
+      it { expect { described_class.new fixture.slug }.not_to raise_error }
+      it { expect { described_class.new fixture.slug, nil }.not_to raise_error }
+      it { expect { described_class.new fixture.slug, fixture.params }.not_to raise_error }
     end # describe params must be a hash
     
     describe "with block" do
-      it { expect { described_class.new @slug, @params, &@block }.not_to raise_error ArgumentError }
+      it { expect { described_class.new fixture.slug, fixture.params, &fixture.block }.not_to raise_error ArgumentError }
     end # describe with block
   end # describe initialization
   
   context "(initialized without block)" do
-    before :each do
-      @location = described_class.new @slug, @params
-    end # before :each
-    subject { @location }
+    let :fixture do fixtures[:mushroom_kingdom] end
+    subject do described_class.new fixture.slug, fixture.params end
     
     describe "region property" do
-      it { subject.region.should be @region }
+      let :region do
+        region = mock('region')
+        region.stub(:is_a?) { |type| type == Explore::Models::Region }
+        region.stub(:slug) { :mushroom_kingdom }
+        region
+      end # end let
+      
+      it { subject.region.should be nil }
       it { expect { subject.region = nil}.to raise_error ArgumentError }
-      it { expect { subject.region = @region }.not_to raise_error }
+      it { expect { subject.region = region }.not_to raise_error }
       
       context "(changed)" do
-        before :each do
-          @region_alt = mock('region')
-          @region_alt.stub(:is_a?) { |type| type == TextExplorer::Explore::Region }
-          subject.region = @region_alt
-        end # before_each
+        before :each do subject.region = region end
         
-        it { subject.region.should be @region_alt }
+        it { subject.region.should be region }
       end # context (changed)
     end # describe region property
     
     describe "slug property" do
-      it { subject.slug.should == @slug }
+      it { subject.slug.should == fixture.slug }
       it { expect { subject.slug = :this_should_fail }.to raise_error NoMethodError }
     end # describe slug property
     
     describe "name property" do
-      it { subject.name.should == "Cloud Nine" }
+      let :name do "Kero Sewers" end
+      
+      it { subject.name.should == fixture.slug.to_s.split("_").map { |str| str.capitalize }.join(" ") }
       it { expect { subject.name = nil }.to raise_error ArgumentError }
-      it { expect { subject.name = "Cloud Seven" }.not_to raise_error }
+      it { expect { subject.name = name }.not_to raise_error }
       
       context "(changed)" do
-        before :each do
-          @name = "Cloud Ten"
-          subject.name = @name
-        end # before :each
+        before :each do subject.name = name end
         
-        it { subject.name.should == @name }
+        it { subject.name.should == name }
       end # context (changed)
     end # describe name property
     
     describe "description property" do
+      let :description_as_string do "Mushroom Kingdom is ruled by the mercurial Princess Toadstool." end
+      let :description_as_proc do Proc.new { "#{self.name} is ruled by the mercurial Princess Toadstool." } end
+      
       it { subject.description.should be_a String }
       it { expect { subject.description = nil }.to raise_error ArgumentError }
-      it { expect { subject.description = @description_as_string }.not_to raise_error }
-      it { expect { subject.description = @description_as_block }.not_to raise_error }
+      it { expect { subject.description = description_as_string }.not_to raise_error }
+      it { expect { subject.description = description_as_proc }.not_to raise_error }
       
       describe "initialized as string" do
-        before :each do
-          @params.update :description => @description_as_string
-          @location = described_class.new @slug, @params
-        end # before :each
-        subject { @location }
+        subject { described_class.new fixture.slug, fixture.params.dup.update({ :description => description_as_string }) }
         
-        it { subject.description.should == @description_as_string }
+        it { subject.description.should == description_as_string }
       end # describe initialized as string
       
       describe "set as string" do
-        before :each do
-          @location.description = @description_as_string
-        end # before :each
-        subject { @location }
+        before :each do subject.description = description_as_string end;
         
-        it { subject.description.should == @description_as_string }
+        it { subject.description.should == description_as_string }
       end # describe set as string
       
       describe "initialized as block" do
-        before :each do
-          @params.update :description => @description_as_block
-          @location = described_class.new @slug, @params
-        end # before :each
-        subject { @location }
+        subject { described_class.new fixture.slug, fixture.params.dup.update({ :description => description_as_proc }) }
         
-        it { subject.description.should == @description_as_string }
+        it { subject.description.should == description_as_string }
       end # describe initialized as block
       
       describe "set as block" do
-        before :each do
-          @location.description = @description_as_block
-        end # before :each
-        subject { @location }
+        before :each do subject.description = description_as_proc end;
         
-        it { subject.description.should == @description_as_string }
+        it { subject.description.should == description_as_string }
       end # describe set as block
     end # describe description property
     
-    describe "locations" do
-      before :each do
-        @edge_name = "Cloud Ten"
-        @edge_params = {
-          :if => nil,
-          :location => :cloud_ten,
-          :particle => true,
-          :region => :the_clouds,
-          :unless => nil
-        } # end edge_params
-      end # before :each
+    describe "edges" do
+      def self.edge_data
+        Explore::Fixtures[:edges].values
+      end # class macro edge_data
       
-      it { expect { subject.add_edge nil, @params }.to raise_error ArgumentError }
+      let(:edge_data) { self.class.edge_data }
+      
+      it { expect { subject.add_edge }.to raise_error ArgumentError, /wrong number of arguments/i }
+      it { expect { subject.add_edge nil }.to raise_error, /location not to be nil/i }
+      it { expect { subject.add_edge edge_data.first[:location] }.not_to raise_error }
+      it { expect { subject.add_edge edge_data.first[:location], edge_data.first[:params] }.not_to raise_error }
 
-      it "name must be unique" do
-        subject.add_edge @edge_name, @edge_params
-        expect { subject.add_edge @edge_name, @edge_params }.to raise_error ArgumentError
-      end # it name must be unique
-      
-      it { expect { subject.add_edge nil, @params.update(:if => true) }.to raise_error ArgumentError }
-      it { expect { subject.add_edge nil, @params.update(:unless => false) }.to raise_error ArgumentError }
-      
-      context "(added)" do
+      context "(added one)" do
+        let(:location_name) {
+          edge_data.first[:location].to_s.snakify.split("_").map{ |str| str.capitalize }.join(" ")
+        } # end let :location_name
+        
         before :each do
-          subject.add_edge @edge_name, @edge_params
-          subject.add_edge "Hidden Through If", @edge_params.clone.update(:if => Proc.new { false })
-          subject.add_edge "Hidden Through Unless", @edge_params.clone.update(:unless => Proc.new { true })
-          subject.add_edge "Direction", @edge_params.clone.update(:particle => false)
+          subject.add_edge edge_data.first[:location], edge_data.first[:params]
         end # before :each
         
-        %w(location particle region).each do |key|
-          it { subject.edges[@edge_name][key].should == @edge_params[key] }
-          it { subject.edges["Hidden Through If"][key].should == @edge_params[key] }
-          it { subject.edges["Hidden Through Unless"][key].should == @edge_params[key] }
+        it { subject.should have_edge edge_data.first[:location] }
+        it { subject.edges.should include edge_data.first[:location] }
+        
+        it { subject.should have_location location_name }
+        it { subject.locations.should include location_name }
+        
+        describe "updating" do
+          let(:params) {
+            { :visible => false,
+              :region => :kero_wetlands
+            } # end anonymous Hash
+          } # end let :params_update
+          
+          let(:edge) { subject.edges[edge_data.first[:location]] }
+          
+          before :each do
+            @added_edge = subject.edges[edge_data.first[:location]]
+            subject.add_edge edge_data.first[:location], params
+          end # before :each
+          
+          it { subject.edges[edge_data.first[:location]].should be @added_edge }
+          it "should update the edge" do
+            params.each do |key, value|
+              @added_edge.send(key).should == value
+            end # each
+          end # it should update the edge
+        end # describe updating
+      end # context (added one)
+
+      context "(added many)" do
+        before :each do
+          edge_data.each do |data|
+            subject.add_edge data[:location], data[:params]
+          end # each
+        end # before :each
+        
+        edge_data.each do |data_item|
+          context do
+            let(:data) { data_item }
+          
+            it { subject.should have_edge data[:location] }
+            it { subject.should have_direction data[:params][:direction].to_s if data[:params][:direction] }
+            it { subject.directions.values.should_not include data[:location] unless data[:params][:direction] }
+          
+            let(:name) {
+              name = (data[:params][:name] if data[:params][:name].is_a? String) ||
+               (data[:location].to_s.snakify.split("_").map { |str| str.capitalize }.join(" ") if data[:params][:direction] and data[:params][:name]) ||
+               (data[:location].to_s.snakify.split("_").map { |str| str.capitalize }.join(" ") unless data[:params][:direction])
+            } # end let :name
+            
+            it { subject.should have_location name if name }
+            it { subject.locations.should include name => data[:location] if name }
+            it { subject.locations.values.should_not include data[:location] unless name }
+          end # anonymous context
         end # each
-        
-        it { subject.edges["Direction"][:location].should == @edge_params[:location] }
-        it { subject.edges["Direction"][:particle].should_not == @edge_params[:particle] }
-        it { subject.edges["Direction"][:region].should == @edge_params[:region] }
-        
-        it { subject.has_edge?(@edge_name).should be true }
-        it { subject.has_edge?("Hidden Through If").should be true }
-        it { subject.has_edge?("Hidden Through Unless").should be true }
-        it { subject.has_edge?("Direction").should be true }
-        it { subject.has_edge?("No Such Edge").should be false }
-        
-        it { subject.has_location?(@edge_name).should be true }
-        it { subject.has_location?("Hidden Through If").should be false }
-        it { subject.has_location?("Hidden Through Unless").should be false }
-        it { subject.has_location?("Direction").should be true }
-        it { subject.has_location?("No Such Edge").should be false }
-        
-        it { subject.locations.should include @edge_name }
-        it { subject.locations.should include "Direction" }
-        it { subject.locations.should_not include "Hidden Through If" }
-        it { subject.locations.should_not include "Hidden Through Unless" }
-        it { subject.locations.should_not include "No Such Edge" }
-      end # context (added)
-    end # describe locations
+      end # context (added many)
+    end # describe edges
   end # context initialized without block
   
-  context "(initialized with block)" do
-    before :each do
-      @block = Proc.new do
-        name "Cloud Eleven"
-        description do "#{self.name} is a magic city in the clouds." end
-        
-        go "North", :region => :more_clouds
-        go_to "Cloud Five", :if => condition { false }
-        
-        action :fly do
-          self.puts "All it takes is faith and trust."
-        end # action :fly
-      end # Proc.new
-      @location = described_class.new @slug, @params, &@block
-    end # before :each
-    subject { @location }
+  context "initialized with block" do
+    let :fixture do fixtures[:mushroom_kingdom] end
     
-    describe "description property" do
-      it { subject.description.should == @description_as_string.gsub(/nine/i, "Eleven") }
-    end # describe description property
+    subject { described_class.new fixture.slug, fixture.params, &fixture.block }
     
-    describe "name property" do
-      it { subject.name.should == @name.gsub(/nine/i, "Eleven") }
-    end # describe name property
-    
-    describe "locations" do
-      it { subject.has_edge?("North").should be true }
-      it { subject.has_edge?("Cloud Five").should be true }
-      
-      it { subject.has_location?("North").should be true }
-      it { subject.has_location?("Cloud Five").should be false }
-      
-      it { subject.locations.should include "North" }
-      it { subject.locations.should_not include "Cloud Five" }
-      
-      it { subject.edges["North"][:region].should be :more_clouds }
-      it { subject.edges["North"][:particle].should be nil }
-      
-      it { subject.edges["Cloud Five"][:region].should be :the_clouds }
-      it { subject.edges["Cloud Five"][:particle].should be true }
-    end # describe locations
-    
-    describe "actions" do
-      it { subject.list_own_actions.should include "fly" }
-      it { subject.has_action?(:fly).should be true }
-      it "executes actions" do
-        output = nil
-        subject.add_listener :text_output, Proc.new { |event|
-          output = event[:text]
-        } # end listener :text_output
-        subject.execute_action :fly
-        
-        output.should =~ /faith and trust/i
-      end # it executes actions
-    end # describe actions
+    it { puts subject.inspect }
   end # context initialized with block
 end # describe Location

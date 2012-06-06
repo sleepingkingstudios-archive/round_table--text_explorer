@@ -1,9 +1,9 @@
-# lib/modules/explore/delegate_parser.rb
+# lib/explore/parsers/delegate_parser.rb
 
 require 'controllers/action_delegate'
 require 'util/argument_validator'
 
-module TextExplorer::Parsers
+module Explore::Parsers
   # A general parser for the domain-specific language used to instantiate new
   # location instances. The delegate parser includes syntax for defining
   # actions and declaring delegates.
@@ -19,4 +19,4 @@ module TextExplorer::Parsers
       @delegate.define_singleton_action name, &block
     end # method action
   end # module DelegateParser
-end # module TextExplorer::Parsers
+end # module Explore::Parsers

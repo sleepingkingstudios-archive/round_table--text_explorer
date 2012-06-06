@@ -1,10 +1,10 @@
-# lib/text_explorer/parsers/location_parser.rb
+# lib/explore/parsers/location_parser.rb
 
 require 'util/argument_validator'
-require 'text_explorer/parsers/delegate_parser'
-require 'text_explorer/explore/location'
+require 'explore/parsers/delegate_parser'
+require 'explore/models/location'
 
-module TextExplorer::Parsers
+module Explore::Parsers
   # A parser for the domain-specific language used to instantiate new location
   # instances. Separate from the location itself to avoid namespace collisions.
   class LocationParser
@@ -13,7 +13,7 @@ module TextExplorer::Parsers
     
     def initialize(location)
       validate_argument location, :as => "location",
-        :type => TextExplorer::Explore::Location
+        :type => Explore::Models::Location
       
       @delegate = location
     end # method initialize
@@ -23,6 +23,7 @@ module TextExplorer::Parsers
       
       Proc.new &block
     end # method condition
+    private :condition
     
     def description(value = nil, &block)
       raise ArgumentError.new "expected String or block" unless block_given? or value.is_a? String
@@ -35,14 +36,10 @@ module TextExplorer::Parsers
       @delegate.name = value
     end # method name
     
-    def go(name, params = {})
-      validate_argument name, :as => :name, :type => [String, Symbol]
+    def go(location, params = {})
+      validate_argument location, :as => "location", :respond_to? => :slugify
       
-      @delegate.add_edge name.to_s, params
+      @delegate.add_edge location, params
     end # method go
-    
-    def go_to(name, params = {})
-      go name, params.update(:particle => true)
-    end # method go_to
   end # class LocationParser
-end # module MonsterCatcher::Explore
+end # module Explore::Parsers
